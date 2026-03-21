@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex View - AI Orchestration Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #7c6aef;
+            --secondary: #4ecdc4;
+            --accent: #f59e0b;
+            --bg-dark: #08080d;
+            --bg-darker: #0f0f15;
+            --bg-light: #1a1a23;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border-color: #2a2a35;
+            --status-pending: #8b5cf6;
+            --status-running: #3b82f6;
+            --status-completed: #10b981;
+            --status-failed: #ef4444;
+            --status-info: #3b82f6;
+            --status-warn: #f59e0b;
+            --status-error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: var(--bg-dark);
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-light) 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .time-display {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-darker);
+            padding: 0 2rem;
+            gap: 0.5rem;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            position: relative;
+            transition: color 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-light);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* Mission Control */
+        .missions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .mission-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mission-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mission-card:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(124, 106, 239, 0.05) 0%, rgba(78, 205, 196, 0.05) 100%);
+            box-shadow: 0 8px 24px rgba(124, 106, 239, 0.15);
+        }
+
+        .mission-card:hover::before {
+            opacity: 1;
+        }
+
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .mission-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .status-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .status-pending {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+
+        .status-running {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            animation: pulse-badge 1.5s infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .status-completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+        }
+
+        .status-failed {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .mission-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .progress-container {
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-darker);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .tasks-section {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .tasks-section.expanded {
+            display: block;
+        }
+
+        .task-group {
+            margin-bottom: 1rem;
+        }
+
+        .phase-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .task-item {
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-name {
+            flex: 1;
+            color: var(--text-secondary);
+        }
+
+        .task-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+        }
+
+        /* Projects Tab */
+        .projects-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .projects-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .project-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .health-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--secondary);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .health-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--secondary);
+        }
+
+        .ring-chart {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 1rem auto;
+        }
+
+        .ring-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .milestone-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .milestone-item:last-child {
+            border-bottom: none;
+        }
+
+        .milestone-name {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .milestone-progress {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .blocker-card {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(124, 106, 239, 0.05) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .blocker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .blocker-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .severity-badge {
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .blocker-description {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Activity Log */
+        .activity-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 100%;
+        }
+
+        .activity-filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .activity-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .activity-item {
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--primary);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            gap: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .activity-item:hover {
+            background: linear-gradient(135deg, rgba(124, 106, 239, 0.05) 0%, rgba(78, 205, 196, 0.05) 100%);
+        }
+
+        .activity-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .activity-icon.warn {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .activity-icon.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .activity-message {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            word-break: break-word;
+            margin-bottom: 0.5rem;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-subtext {
+            font-size: 0.85rem;
+            opacity: 0.6;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .projects-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-right {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .tabs {
+                padding: 0 1rem;
+                overflow-x: auto;
+            }
+
+            .tab-content {
+                padding: 1rem;
+            }
+
+            .missions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .projects-container {
+                grid-template-columns: 1fr;
+            }
+
+            .mission-card {
+                padding: 1rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mission-card, .project-card, .activity-item {
+            animation: slideIn 0.3s ease;
+        }
+
+        /* Utility */
+        .flex-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .text-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <div class="logo">🧠 Cortex View</div>
+                <div class="connection-status">
+                    <div class="status-indicator"></div>
+                    <span id="connection-text">Connecting...</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="time-display" id="time-display">00:00:00</div>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="missions">
+                ミッション管理
+            </button>
+            <button class="tab" data-tab="projects">
+                プロジェクト
+            </button>
+            <button class="tab" data-tab="activity">
+                アクティビティ
+            </button>
+        </div>
+
+        <!-- Tab 1: Mission Control -->
+        <div class="tab-content active" id="missions-content">
+            <div class="missions-grid" id="missions-grid">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚙️</div>
+                    <div class="empty-state-text">Loading missions...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Projects -->
+        <div class="tab-content" id="projects-content">
+            <div class="projects-container">
+                <div class="projects-section">
+                    <h2 style="margin-bottom: 1rem; font-weight: 600;">Projects Overview</h2>
+                    <div id="projects-list"></div>
+                </div>
+                <div class="projects-section">
+                    <h2 style="margin-bottom: 1rem; font-weight: 600;">Blockers</h2>
+                    <div id="blockers-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Activity Log -->
+        <div class="tab-content" id="activity-content">
+            <div class="activity-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="info">Info</button>
+                <button class="filter-btn" data-filter="warn">Warning</button>
+                <button class="filter-btn" data-filter="error">Error</button>
+            </div>
+            <div class="activity-list" id="activity-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">Loading activity...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://agghtubnhctbhtvrmphg.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnZ2h0dWJuaGN0Ymh0dnJtcGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjU5MDcsImV4cCI6MjA4OTAwMTkwN30.LZE7Gioevozs3glxXHAuClXA6aXrIEJLKxISAgJOHG0';
+        const USER_ID = '09f14704-3fff-44f3-8a8a-7cd65a61b432';
+
+        let supabase = null;
+        let currentFilter = 'all';
+        let missions = {};
+        let allLogs = [];
+
+        // Initialize Supabase
+        async function initSupabase() {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            updateConnectionStatus(true);
+            await loadAllData();
+            setupLiveSubscriptions();
+            startAutoRefresh();
+        }
+
+        function updateConnectionStatus(connected) {
+            const indicator = document.querySelector('.status-indicator');
+            const text = document.getElementById('connection-text');
+            if (connected) {
+                indicator.style.background = '#10b981';
+                text.textContent = 'Live';
+            } else {
+                indicator.style.background = '#ef4444';
+                text.textContent = 'Offline';
+            }
+        }
+
+        // Load all initial data
+        async function loadAllData() {
+            try {
+                await Promise.all([
+                    loadMissions(),
+                    loadProjects(),
+                    loadLogs()
+                ]);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-content`).classList.add('active');
+            });
+        });
+
+        // ==================== MISSIONS TAB ====================
+
+        async function loadMissions() {
+            try {
+                const { data, error } = await supabase.rpc('cx_list_missions', {
+                    p_user_id: USER_ID
+                });
+
+                if (error) throw error;
+
+                missions = {};
+                const missionsGrid = document.getElementById('missions-grid');
+                missionsGrid.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    missionsGrid.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <div class="empty-state-icon">🚀</div>
+                            <div class="empty-state-text">No missions yet</div>
+                            <div class="empty-state-subtext">Missions will appear here when they are created</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                data.forEach(mission => {
+                    missions[mission.id] = mission;
+                    const card = createMissionCard(mission);
+                    missionsGrid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading missions:', error);
+            }
+        }
+
+        function createMissionCard(mission) {
+            const card = document.createElement('div');
+            card.className = 'mission-card';
+
+            const statusText = mission.status || 'pending';
+            const statusClass = `status-${statusText.toLowerCase()}`;
+
+            // Calculate progress
+            const totalTasks = mission.task_count || 0;
+            const completedTasks = mission.completed_task_count || 0;
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+            // Calculate elapsed time
+            const startTime = new Date(mission.created_at);
+            const now = new Date();
+            const elapsed = formatElapsedTime(now - startTime);
+
+            card.innerHTML = `
+                <div class="mission-header">
+                    <div class="mission-title">${escapeHtml(mission.title || 'Untitled Mission')}</div>
+                    <div class="status-badge ${statusClass}">${statusText.toUpperCase()}</div>
+                </div>
+                <div class="mission-meta">
+                    <span>🕐 ${elapsed}</span>
+                    <span>${completedTasks}/${totalTasks} tasks</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Progress</span>
+                        <span>${progress}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                </div>
+                <div class="tasks-section" id="tasks-${mission.id}">
+                    <div class="task-group">
+                        <div class="phase-label">Loading tasks...</div>
+                    </div>
+                </div>
+            `;
+
+            card.addEventListener('click', () => {
+                const tasksSection = card.querySelector('.tasks-section');
+                tasksSection.classList.toggle('expanded');
+                if (tasksSection.classList.contains('expanded')) {
+                    loadMissionTasks(mission.id, card);
+                }
+            });
+
+            return card;
+        }
+
+        async function loadMissionTasks(missionId, card) {
+            try {
+                const { data, error } = await supabase.rpc('cx_get_mission', {
+                    p_mission_id: missionId
+                });
+
+                if (error) throw error;
+
+                const tasksSection = card.querySelector(`#tasks-${missionId}`);
+                tasksSection.innerHTML = '';
+
+                if (!data || !data.tasks || data.tasks.length === 0) {
+                    tasksSection.innerHTML = '<div class="phase-label">No tasks</div>';
+                    return;
+                }
+
+                // Group by phase
+                const phases = {};
+                data.tasks.forEach(task => {
+                    const phase = task.phase || 'General';
+                    if (!phases[phase]) phases[phase] = [];
+                    phases[phase].push(task);
+                });
+
+                // Render phases
+                Object.entries(phases).forEach(([phase, tasks]) => {
+                    const group = document.createElement('div');
+                    group.className = 'task-group';
+                    group.innerHTML = `<div class="phase-label">${escapeHtml(phase)}</div>`;
+
+                    tasks.forEach(task => {
+                        const taskEl = document.createElement('div');
+                        taskEl.className = 'task-item';
+                        const statusColor = getTaskStatusColor(task.status);
+                        taskEl.innerHTML = `
+                            <span class="task-name">${escapeHtml(task.title || 'Untitled')}</span>
+                            <div class="task-status-dot" style="background: ${statusColor}"></div>
+                        `;
+                        group.appendChild(taskEl);
+                    });
+
+                    tasksSection.appendChild(group);
+                });
+            } catch (error) {
+                console.error('Error loading mission tasks:', error);
+            }
+        }
+
+        function getTaskStatusColor(status) {
+            const colors = {
+                'pending': '#8b5cf6',
+                'running': '#3b82f6',
+                'completed': '#10b981',
+                'failed': '#ef4444'
+            };
+            return colors[status] || '#a0a0a0';
+        }
+
+        // ==================== PROJECTS TAB ====================
+
+        async function loadProjects() {
+            try {
+                const { data, error } = await supabase.rpc('nv_get_dashboard', {
+                    p_user_id: USER_ID
+                });
+
+                if (error) throw error;
+
+                const projectsList = document.getElementById('projects-list');
+                projectsList.innerHTML = '';
+
+                // nv_get_dashboard returns a JSONB array directly, not {projects: [...]}
+                const projects = Array.isArray(data) ? data : (data?.projects || []);
+
+                if (!projects || projects.length === 0) {
+                    projectsList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">No projects</div></div>';
+                    return;
+                }
+
+                projects.forEach(project => {
+                    const card = document.createElement('div');
+                    card.className = 'project-card';
+
+                    const milestones = project.milestones || [];
+                    const completedMilestones = milestones.filter(m => m.done === true || m.status === 'completed').length;
+                    const progress = project.progress || (milestones.length > 0 ? Math.round((completedMilestones / milestones.length) * 100) : 0);
+
+                    card.innerHTML = `
+                        <div class="project-header">
+                            <div>
+                                <div class="project-name">${escapeHtml(project.name)}</div>
+                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${escapeHtml(project.description || '')}</div>
+                            </div>
+                            <div class="health-indicator">
+                                <div class="health-dot" style="background: ${project.health === 'at_risk' ? 'var(--status-error)' : project.health === 'warning' ? 'var(--status-warn)' : 'var(--status-completed)'}"></div>
+                                <span>${project.health === 'at_risk' ? 'At Risk' : project.health === 'warning' ? 'Warning' : 'Healthy'}</span>
+                            </div>
+                        </div>
+                        <svg class="ring-svg ring-chart" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="45" fill="none" stroke="var(--bg-darker)" stroke-width="8"></circle>
+                            <circle cx="60" cy="60" r="45" fill="none" stroke="var(--primary)" stroke-width="8"
+                                stroke-dasharray="${Math.PI * 90 * progress / 100} ${Math.PI * 90}"
+                                stroke-linecap="round"></circle>
+                            <text x="60" y="65" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="600">${progress}%</text>
+                        </svg>
+                        <div style="margin-top: 1rem;">
+                            ${milestones.map(m => `
+                                <div class="milestone-item">
+                                    <span class="milestone-name">${escapeHtml(m.label || m.name || 'Untitled')}</span>
+                                    <span class="milestone-progress">${(m.done === true || m.status === 'completed') ? '✓' : (m.status || 'pending')}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    projectsList.appendChild(card);
+                });
+
+                // Load blockers
+                await loadBlockers();
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
+        }
+
+        async function loadBlockers() {
+            try {
+                const { data, error } = await supabase.rpc('nv_get_stale_blockers', {
+                    p_user_id: USER_ID
+                });
+
+                if (error) throw error;
+
+                const blockersList = document.getElementById('blockers-list');
+                blockersList.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    blockersList.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">No blockers 🎉</div>';
+                    return;
+                }
+
+                data.forEach(blocker => {
+                    const card = document.createElement('div');
+                    card.className = 'blocker-card';
+                    card.innerHTML = `
+                        <div class="blocker-header">
+                            <div class="blocker-title">${escapeHtml(blocker.text || blocker.title || 'Untitled')}</div>
+                            <div class="severity-badge">${(blocker.severity || 'medium').toUpperCase()}</div>
+                        </div>
+                        <div class="blocker-description">${escapeHtml(blocker.project_name || '')}</div>
+                        <div style="margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
+                            🕐 ${blocker.days_old != null ? blocker.days_old + 'd' : formatElapsedTime(new Date() - new Date(blocker.created_at))} ago
+                        </div>
+                    `;
+                    blockersList.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading blockers:', error);
+            }
+        }
+
+        // ==================== ACTIVITY LOG TAB ====================
+
+        async function loadLogs() {
+            try {
+                // cx_logs doesn't have user_id directly — join through cx_missions
+                const { data: missionData } = await supabase
+                    .from('cx_missions')
+                    .select('id')
+                    .eq('user_id', USER_ID);
+
+                const missionIds = (missionData || []).map(m => m.id);
+
+                let data = [];
+                if (missionIds.length > 0) {
+                    const { data: logData, error } = await supabase
+                        .from('cx_logs')
+                        .select('*')
+                        .in('mission_id', missionIds)
+                        .order('created_at', { ascending: false })
+                        .limit(100);
+                    if (error) throw error;
+                    data = logData || [];
+                }
+
+                allLogs = data;
+                renderActivityLog();
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderActivityLog();
+            });
+        });
+
+        function renderActivityLog() {
+            const list = document.getElementById('activity-list');
+            list.innerHTML = '';
+
+            const filtered = currentFilter === 'all'
+                ? allLogs
+                : allLogs.filter(log => (log.level || 'info').toLowerCase() === currentFilter);
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔇</div>
+                        <div class="empty-state-text">No activities</div>
+                        <div class="empty-state-subtext">Activity logs will appear here</div>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+
+                const level = (log.level || 'info').toLowerCase();
+                const iconMap = { 'info': 'ℹ️', 'warn': '⚠️', 'error': '❌' };
+                const icon = iconMap[level] || 'ℹ️';
+
+                item.innerHTML = `
+                    <div class="activity-icon ${level}">${icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">${escapeHtml(log.message || 'Activity')}</div>
+                        <div class="activity-message">${log.metadata ? escapeHtml(JSON.stringify(log.metadata)) : ''}</div>
+                        <div class="activity-time">${formatTime(new Date(log.created_at))}</div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // ==================== LIVE SUBSCRIPTIONS ====================
+
+        function setupLiveSubscriptions() {
+            // Supabase v2 realtime API uses channel().on().subscribe()
+            supabase
+                .channel('cx-missions-changes')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'cx_missions', filter: `user_id=eq.${USER_ID}` },
+                    () => { loadMissions(); }
+                )
+                .subscribe();
+
+            supabase
+                .channel('cx-logs-changes')
+                .on('postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'cx_logs' },
+                    (payload) => {
+                        // Reload logs (can't filter by user_id since cx_logs doesn't have it)
+                        loadLogs();
+                    }
+                )
+                .subscribe();
+
+            supabase
+                .channel('nv-projects-changes')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'nv_projects', filter: `user_id=eq.${USER_ID}` },
+                    () => { loadProjects(); }
+                )
+                .subscribe();
+        }
+
+        // ==================== AUTO REFRESH ====================
+
+        function startAutoRefresh() {
+            setInterval(() => {
+                loadAllData();
+            }, 15000);
+        }
+
+        // ==================== UTILITIES ====================
+
+        function formatElapsedTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) return `${days}d`;
+            if (hours > 0) return `${hours}h`;
+            if (minutes > 0) return `${minutes}m`;
+            return `${seconds}s`;
+        }
+
+        function formatTime(date) {
+            const now = new Date();
+            const diff = now - date;
+
+            if (diff < 60000) return 'just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+
+            return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Update time display
+        setInterval(() => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('time-display').textContent = `${hours}:${minutes}:${seconds}`;
+        }, 1000);
+
+        // Initialize on load
+        window.addEventListener('load', initSupabase);
+    </script>
+</body>
+</html>
