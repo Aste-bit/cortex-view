@@ -238,14 +238,14 @@ const SUPABASE_URL = 'https://agghtubnhctbhtvrmphg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnZ2h0dWJuaGN0Ymh0dnJtcGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjU5MDcsImV4cCI6MjA4OTAwMTkwN30.LZE7Gioevozs3glxXHAuClXA6aXrIEJLKxISAgJOHG0';
 const USER_ID = '09f14704-3fff-44f3-8a8a-7cd65a61b432';
 
-let supabase;
+let sb;
 let allLogs = [];
 let currentFilter = 'all';
 
 // ==================== INIT ====================
 async function initSupabase() {
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     document.querySelector('.conn-status').innerHTML = '<div class="conn-dot"></div>Supabase 接続中';
     await loadAllData();
     setupLiveSubscriptions();
@@ -272,7 +272,7 @@ function switchTab(name) {
 // ==================== PROJECTS ====================
 async function loadProjects() {
   try {
-    const { data, error } = await supabase.rpc('nv_get_dashboard', { p_user_id: USER_ID });
+    const { data, error } = await sb.rpc('nv_get_dashboard', { p_user_id: USER_ID });
     if (error) throw error;
 
     const projects = Array.isArray(data) ? data : (data?.projects || []);
@@ -357,7 +357,7 @@ function updateSummary(total, done, progress, blockers) {
 // ==================== BLOCKERS ====================
 async function loadBlockers() {
   try {
-    const { data, error } = await supabase.rpc('nv_get_stale_blockers', {
+    const { data, error } = await sb.rpc('nv_get_stale_blockers', {
       p_user_id: USER_ID, p_days_threshold: 3
     });
     if (error) throw error;
@@ -390,7 +390,7 @@ async function loadBlockers() {
 // ==================== MISSIONS ====================
 async function loadMissions() {
   try {
-    const { data, error } = await supabase.rpc('cx_list_missions', { p_user_id: USER_ID });
+    const { data, error } = await sb.rpc('cx_list_missions', { p_user_id: USER_ID });
     if (error) throw error;
 
     const list = document.getElementById('missions-list');
@@ -439,7 +439,7 @@ async function loadMissions() {
 
 async function loadMissionTasks(id, el) {
   try {
-    const { data, error } = await supabase.rpc('cx_get_mission', { p_mission_id: id });
+    const { data, error } = await sb.rpc('cx_get_mission', { p_mission_id: id });
     if (error) throw error;
     el.dataset.loaded = '1';
 
@@ -464,11 +464,11 @@ async function loadMissionTasks(id, el) {
 // ==================== ACTIVITY ====================
 async function loadLogs() {
   try {
-    const { data: missionData } = await supabase.from('cx_missions').select('id').eq('user_id', USER_ID);
+    const { data: missionData } = await sb.from('cx_missions').select('id').eq('user_id', USER_ID);
     const ids = (missionData||[]).map(m=>m.id);
     let data = [];
     if (ids.length > 0) {
-      const { data: logData, error } = await supabase.from('cx_logs').select('*').in('mission_id', ids).order('created_at',{ascending:false}).limit(100);
+      const { data: logData, error } = await sb.from('cx_logs').select('*').in('mission_id', ids).order('created_at',{ascending:false}).limit(100);
       if (error) throw error;
       data = logData || [];
     }
@@ -516,13 +516,13 @@ function renderActivity() {
 
 // ==================== REALTIME ====================
 function setupLiveSubscriptions() {
-  supabase.channel('nv-changes')
+  sb.channel('nv-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'nv_projects',filter:`user_id=eq.${USER_ID}`},()=>loadProjects())
     .subscribe();
-  supabase.channel('cx-missions')
+  sb.channel('cx-missions')
     .on('postgres_changes',{event:'*',schema:'public',table:'cx_missions',filter:`user_id=eq.${USER_ID}`},()=>loadMissions())
     .subscribe();
-  supabase.channel('cx-logs')
+  sb.channel('cx-logs')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'cx_logs'},()=>loadLogs())
     .subscribe();
 }
