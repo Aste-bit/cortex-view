@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cortex — Discord × AI オーケストレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter','Hiragino Sans','Meiryo',sans-serif;background:#fff;color:#1a202c;line-height:1.7;}
+
+/* ===== NAV ===== */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid #e2e8f0;padding:0 24px;
+}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;height:56px;}
+.nav-logo{font-size:18px;font-weight:800;color:#1a202c;text-decoration:none;display:flex;align-items:center;gap:8px;}
+.nav-links{display:flex;gap:24px;}
+.nav-links a{font-size:13px;font-weight:500;color:#64748b;text-decoration:none;transition:color .2s;}
+.nav-links a:hover{color:#4f46e5;}
+.nav-cta{
+  background:#4f46e5;color:#fff;padding:8px 20px;border-radius:8px;
+  font-size:13px;font-weight:600;text-decoration:none;transition:background .2s;
+}
+.nav-cta:hover{background:#4338ca;}
+
+/* ===== HERO ===== */
+.hero{
+  padding:140px 24px 80px;text-align:center;
+  background:linear-gradient(180deg,#f8fafc 0%,#fff 100%);
+}
+.hero-badge{
+  display:inline-block;background:#eef2ff;color:#4f46e5;
+  font-size:12px;font-weight:600;padding:6px 16px;border-radius:20px;
+  margin-bottom:20px;border:1px solid #c7d2fe;
+}
+.hero h1{
+  font-size:clamp(32px,5vw,56px);font-weight:800;line-height:1.2;
+  color:#0f172a;max-width:800px;margin:0 auto 20px;
+}
+.hero h1 .accent{
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero p{
+  font-size:clamp(16px,2vw,20px);color:#64748b;max-width:600px;margin:0 auto 36px;
+  line-height:1.7;
+}
+.hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.btn-primary{
+  background:#4f46e5;color:#fff;padding:14px 32px;border-radius:10px;
+  font-size:15px;font-weight:600;text-decoration:none;transition:all .2s;
+  box-shadow:0 4px 14px rgba(79,70,229,0.3);
+}
+.btn-primary:hover{background:#4338ca;transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,0.4);}
+.btn-secondary{
+  background:#fff;color:#4f46e5;padding:14px 32px;border-radius:10px;
+  font-size:15px;font-weight:600;text-decoration:none;border:1px solid #c7d2fe;transition:all .2s;
+}
+.btn-secondary:hover{background:#eef2ff;}
+
+.hero-visual{
+  max-width:700px;margin:48px auto 0;
+  background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;
+  padding:24px;box-shadow:0 8px 30px rgba(0,0,0,0.06);
+}
+.terminal{
+  background:#1e293b;border-radius:10px;padding:20px;text-align:left;
+  font-family:'SF Mono','Fira Code',monospace;font-size:13px;line-height:1.8;color:#94a3b8;
+}
+.terminal .prompt{color:#818cf8;}
+.terminal .output{color:#34d399;}
+.terminal .dim{color:#475569;}
+
+/* ===== SECTION COMMON ===== */
+section{padding:80px 24px;}
+.section-inner{max-width:1100px;margin:0 auto;}
+.section-tag{
+  font-size:12px;font-weight:700;color:#4f46e5;text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:8px;
+}
+.section-heading{font-size:clamp(24px,3.5vw,36px);font-weight:800;color:#0f172a;margin-bottom:16px;}
+.section-sub{font-size:16px;color:#64748b;max-width:600px;line-height:1.7;}
+
+/* ===== FEATURES ===== */
+.features{background:#f8fafc;}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px;}
+.feature-card{
+  background:#fff;border-radius:14px;padding:32px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);transition:all .3s;
+  border:1px solid #e2e8f0;
+}
+.feature-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-2px);}
+.feature-icon{
+  width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin-bottom:16px;
+}
+.feature-icon.purple{background:#eef2ff;color:#4f46e5;}
+.feature-icon.green{background:#f0fdf4;color:#16a34a;}
+.feature-icon.amber{background:#fffbeb;color:#d97706;}
+.feature-card h3{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px;}
+.feature-card p{font-size:14px;color:#64748b;line-height:1.7;}
+
+/* ===== HOW IT WORKS ===== */
+.steps-section{background:#fff;}
+.steps-grid{margin-top:48px;position:relative;}
+.steps-grid::before{
+  content:'';position:absolute;left:23px;top:0;bottom:0;width:2px;background:#e2e8f0;
+}
+.step{display:flex;gap:24px;margin-bottom:32px;position:relative;}
+.step:last-child{margin-bottom:0;}
+.step-num{
+  width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:700;flex-shrink:0;z-index:1;
+  background:#4f46e5;color:#fff;box-shadow:0 4px 12px rgba(79,70,229,0.25);
+}
+.step-content{padding-top:8px;flex:1;}
+.step-content h4{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:4px;}
+.step-content p{font-size:14px;color:#64748b;line-height:1.7;}
+
+/* ===== COST ===== */
+.cost-section{background:#f8fafc;}
+.cost-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px;}
+.cost-card{
+  background:#fff;border-radius:14px;padding:28px;text-align:center;
+  border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.cost-card.highlight{border-color:#c7d2fe;box-shadow:0 4px 16px rgba(79,70,229,0.1);}
+.cost-label{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;}
+.cost-price{font-size:32px;font-weight:800;color:#0f172a;margin:8px 0;}
+.cost-price .unit{font-size:14px;font-weight:500;color:#94a3b8;}
+.cost-desc{font-size:13px;color:#64748b;line-height:1.6;}
+.cost-items{list-style:none;margin-top:12px;text-align:left;}
+.cost-items li{font-size:13px;color:#4a5568;padding:6px 0;display:flex;align-items:center;gap:8px;}
+.cost-items li::before{content:'\2713';color:#4f46e5;font-weight:700;font-size:12px;}
+.cost-note{margin-top:32px;font-size:13px;color:#94a3b8;text-align:center;}
+
+/* ===== CTA ===== */
+.cta-section{
+  background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);
+  text-align:center;padding:80px 24px;
+}
+.cta-section h2{font-size:clamp(24px,3.5vw,36px);font-weight:800;color:#fff;margin-bottom:12px;}
+.cta-section p{font-size:16px;color:rgba(255,255,255,0.8);margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto;}
+.cta-btn{
+  display:inline-block;background:#fff;color:#4f46e5;padding:16px 40px;border-radius:10px;
+  font-size:16px;font-weight:700;text-decoration:none;transition:all .2s;
+  box-shadow:0 4px 14px rgba(0,0,0,0.15);
+}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.2);}
+
+/* ===== FOOTER ===== */
+footer{background:#0f172a;color:#94a3b8;text-align:center;padding:32px 24px;font-size:13px;}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:800px){
+  .features-grid,.cost-grid{grid-template-columns:1fr;}
+  .nav-links{display:none;}
+  .steps-grid::before{left:23px;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">&#129504; Cortex</a>
+    <div class="nav-links">
+      <a href="#features">特徴</a>
+      <a href="#how-it-works">仕組み</a>
+      <a href="#cost">コスト</a>
+    </div>
+    <a href="https://github.com/Aste-bit/cortex" class="nav-cta">GitHub</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Open Source AI Orchestrator</div>
+  <h1>Discordで指示するだけ。<br><span class="accent">AIが全部やる。</span></h1>
+  <p>CortexはDiscordメッセージをトリガーに、Claude Codeが自動でタスクを分解・並列実行し、進捗をリアルタイムで可視化するAIオーケストレーションシステムです。</p>
+  <div class="hero-actions">
+    <a href="https://github.com/Aste-bit/cortex" class="btn-primary">セットアップガイド</a>
+    <a href="https://cortex-view.vercel.app" class="btn-secondary">ダッシュボードを見る</a>
+  </div>
+
+  <div class="hero-visual">
+    <div class="terminal">
+      <div><span class="prompt">shun:</span> <span style="color:#f1f5f9">@Cortex チーム招待機能を作って</span></div>
+      <div class="dim">---</div>
+      <div><span class="output">&#129504; Cortex起動 — チーム招待機能</span></div>
+      <div><span class="output">&#9889; Phase 1/2 実行中...</span></div>
+      <div><span class="dim">&nbsp;&nbsp;&#128260; DB設計（Agent #1）</span></div>
+      <div><span class="dim">&nbsp;&nbsp;&#128260; API実装（Agent #2）</span></div>
+      <div><span class="dim">&nbsp;&nbsp;&#128260; フロントUI（Agent #3）</span></div>
+      <div style="margin-top:8px"><span class="output">&#9989; 3/3 タスク完了 — 42s</span></div>
+      <div><span class="output">&#128200; ダッシュボード更新済み</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="section-inner">
+    <div class="section-tag">Features</div>
+    <h2 class="section-heading">3つの特徴</h2>
+    <p class="section-sub">指示を出す場所はDiscord。あとはCortexが考えて、動いて、報告する。</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon purple">&#9889;</div>
+        <h3>並列サブエージェント</h3>
+        <p>タスクを自動で分解し、依存関係を分析。独立したタスクはClaude Codeサブエージェントで同時並列実行。直列の3倍速でプロジェクトが進む。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green">&#128200;</div>
+        <h3>リアルタイム進捗管理</h3>
+        <p>git commitにタグを付けるだけで、Supabaseのマイルストーンが自動更新。Cortex Viewダッシュボードで全プロジェクトの進捗を一覧できる。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon amber">&#129504;</div>
+        <h3>コーチング&ブロッカー検知</h3>
+        <p>3日以上放置されたブロッカーを自動検知して通知。セッション開始時にプロアクティブに声かけし、プロジェクトの停滞を防ぐ。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="steps-section" id="how-it-works">
+  <div class="section-inner">
+    <div class="section-tag">How it works</div>
+    <h2 class="section-heading">Cortexが動く8ステップ</h2>
+    <p class="section-sub">Discordで一言指示するだけで、裏側では8つのステップが自動で走ります。</p>
+
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Discord でメッセージ受信</h4>
+          <p>ユーザーが <code>@Cortex ○○して</code> とDiscordで指示。MCPプラグインがメッセージをClaude Codeに中継。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>モード判定</h4>
+          <p>メッセージ内容を分析し、Mission（実行）/ Status（確認）/ Chat / Coaching の4モードに自動振り分け。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>コンテキスト取得</h4>
+          <p>Supabaseからプロジェクト一覧・マイルストーン・ブロッカーを取得し、現在の全体像を把握。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>タスク分解</h4>
+          <p>ユーザーの指示を独立したサブタスクに分解。依存関係を分析してフェーズ分けする。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>並列エージェント起動</h4>
+          <p>依存関係のないタスクをClaude Codeサブエージェントで同時起動。各エージェントが独立してコードを書く。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Git コミット & 自動進捗更新</h4>
+          <p>コミットメッセージの <code>[Project:Milestone]</code> タグをpost-commitフックが検知し、Supabaseのマイルストーンを自動で完了にマーク。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-content">
+          <h4>ダッシュボード自動更新</h4>
+          <p>Cortex ViewがSupabaseのリアルタイムサブスクリプションで即座に反映。ブラウザを開いていれば自動で最新状態に。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">8</div>
+        <div class="step-content">
+          <h4>Discord に結果報告</h4>
+          <p>全タスク完了後、実行結果のサマリーとダッシュボードリンクをDiscordに自動送信。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COST -->
+<section class="cost-section" id="cost">
+  <div class="section-inner">
+    <div class="section-tag">Cost Structure</div>
+    <h2 class="section-heading">コスト構造</h2>
+    <p class="section-sub">Cortex自体はオープンソース。かかるのはインフラとAPIの従量課金だけ。</p>
+
+    <div class="cost-grid">
+      <div class="cost-card">
+        <div class="cost-label">Claude Code</div>
+        <div class="cost-price">$20<span class="unit">/月〜</span></div>
+        <div class="cost-desc">Anthropic Max プラン</div>
+        <ul class="cost-items">
+          <li>Claude Code CLI 利用権</li>
+          <li>サブエージェント並列実行</li>
+          <li>Opus 4.6 / Sonnet 4.6</li>
+        </ul>
+      </div>
+      <div class="cost-card highlight">
+        <div class="cost-label">Supabase</div>
+        <div class="cost-price">$0<span class="unit">/月</span></div>
+        <div class="cost-desc">Free Tier で十分</div>
+        <ul class="cost-items">
+          <li>500MB データベース</li>
+          <li>リアルタイムサブスクリプション</li>
+          <li>RPC関数（無制限）</li>
+        </ul>
+      </div>
+      <div class="cost-card">
+        <div class="cost-label">Vercel + Discord</div>
+        <div class="cost-price">$0<span class="unit">/月</span></div>
+        <div class="cost-desc">どちらも無料枠で運用可能</div>
+        <ul class="cost-items">
+          <li>Vercel Hobby（ダッシュボード）</li>
+          <li>Discord Bot（無料）</li>
+          <li>独自ドメイン対応</li>
+        </ul>
+      </div>
+    </div>
+    <p class="cost-note">* 個人利用の場合の目安です。API従量課金プランを使う場合はトークン消費量に応じて変動します。</p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>今すぐCortexを始めよう</h2>
+  <p>セットアップは10分。Discordサーバーがあれば、すぐにAIオーケストレーションを体験できます。</p>
+  <a href="https://github.com/Aste-bit/cortex" class="cta-btn">GitHub でセットアップ</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>&copy; 2026 Cortex — Open Source AI Orchestrator</p>
+</footer>
+
+</body>
+</html>
